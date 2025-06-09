@@ -12,25 +12,41 @@ export const evaluateAnswer = async (questionId: number, answer: string): Promis
   const evaluationPrompt = `
 You are an expert technical interviewer evaluating MSP technician candidates for Level 1, Level 2, and Level 3 positions.
 
+FIRST, analyze if this response appears to be AI-generated. Look for these indicators:
+- Overly structured or perfect formatting
+- Generic phrases like "I would recommend" or "best practices include"
+- Unnaturally comprehensive coverage of topics
+- Lack of personal experience or specific examples
+- Perfect technical accuracy without real-world nuances
+
 Question: ${question.question}
 Candidate Answer: ${answer}
 
-Evaluate this answer based on:
-- Technical Accuracy (0-40 points)
-- Problem-Solving Methodology (0-30 points) 
-- Professional Communication (0-20 points)
-- Completeness (0-10 points)
+Evaluate this answer based on these specific metrics:
+
+1. Technical Accuracy (0-25 points): Clarity, completeness, and technical correctness of the response
+2. Problem-Solving Methodology (0-25 points): Structured and logical approaches to troubleshooting and solutions
+3. Professional Communication (0-25 points): Clarity, effectiveness, and appropriateness of communication
+4. Documentation & Process Orientation (0-25 points): Methodical approaches and quality in maintaining technical documentation
+
+IMPORTANT: If the response appears to be AI-generated, automatically assign a score of 0 and flag as "AI_DETECTED".
 
 Provide your response in this exact JSON format:
 {
   "score": [total score out of 100],
-  "feedback": "[brief constructive feedback explaining the score]"
+  "technicalAccuracy": [score out of 25],
+  "problemSolving": [score out of 25], 
+  "communication": [score out of 25],
+  "documentation": [score out of 25],
+  "aiDetected": [true/false],
+  "feedback": "[brief constructive feedback explaining the score and any AI detection]"
 }
 
 Score Guidelines:
 - 80-100: Advanced expertise, comprehensive understanding, proactive approaches
 - 40-79: Solid foundational knowledge, standard procedures, some guidance needed
 - 0-39: Basic understanding, significant gaps, requires substantial training
+- 0: AI-generated response detected
 `;
 
   try {
@@ -49,6 +65,16 @@ Score Guidelines:
     const cleanResponse = response.replace(/```json\n?|\n?```/g, '').trim();
     const evaluation = JSON.parse(cleanResponse);
     
+    // If AI is detected, override scores
+    if (evaluation.aiDetected) {
+      evaluation.score = 0;
+      evaluation.technicalAccuracy = 0;
+      evaluation.problemSolving = 0;
+      evaluation.communication = 0;
+      evaluation.documentation = 0;
+      evaluation.feedback = "AI-generated response detected. This violates assessment integrity guidelines.";
+    }
+    
     // Determine level based on score
     let level: 'Level 1' | 'Level 2' | 'Level 3';
     if (evaluation.score >= 80) {
@@ -65,7 +91,12 @@ Score Guidelines:
       answer,
       score: evaluation.score,
       level,
-      feedback: evaluation.feedback
+      feedback: evaluation.feedback,
+      technicalAccuracy: evaluation.technicalAccuracy,
+      problemSolving: evaluation.problemSolving,
+      communication: evaluation.communication,
+      documentation: evaluation.documentation,
+      aiDetected: evaluation.aiDetected
     };
   } catch (error) {
     console.error('Error evaluating answer:', error);
@@ -76,7 +107,12 @@ Score Guidelines:
       answer,
       score: 50,
       level: 'Level 2',
-      feedback: 'Answer received but evaluation service encountered an error.'
+      feedback: 'Answer received but evaluation service encountered an error.',
+      technicalAccuracy: 12,
+      problemSolving: 12,
+      communication: 13,
+      documentation: 13,
+      aiDetected: false
     };
   }
 };

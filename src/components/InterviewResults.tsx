@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { QuestionAnswer } from '../types/interview';
-import { CheckCircle, Award, FileText, AlertTriangle } from 'lucide-react';
+import { CheckCircle, Award, FileText, AlertTriangle, Shield, Brain, MessageSquare, ClipboardCheck } from 'lucide-react';
 
 interface InterviewResultsProps {
   answers: QuestionAnswer[];
@@ -21,9 +21,19 @@ export const InterviewResults: React.FC<InterviewResultsProps> = ({
     'Level 3': answers.filter(a => a.level === 'Level 3').length
   };
 
+  // Calculate average metrics
+  const avgTechnicalAccuracy = answers.reduce((sum, a) => sum + a.technicalAccuracy, 0) / answers.length;
+  const avgProblemSolving = answers.reduce((sum, a) => sum + a.problemSolving, 0) / answers.length;
+  const avgCommunication = answers.reduce((sum, a) => sum + a.communication, 0) / answers.length;
+  const avgDocumentation = answers.reduce((sum, a) => sum + a.documentation, 0) / answers.length;
+
+  // Check for AI detection
+  const aiDetectedCount = answers.filter(a => a.aiDetected).length;
+  const hasAiDetection = aiDetectedCount > 0;
+
   // Determine suitability based on average score and level distribution
-  const isSuitableForSeniorRole = averageScore >= 80;
-  const isSuitableForStandardRole = averageScore >= 40;
+  const isSuitableForSeniorRole = averageScore >= 80 && !hasAiDetection;
+  const isSuitableForStandardRole = averageScore >= 40 && !hasAiDetection;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
@@ -36,6 +46,19 @@ export const InterviewResults: React.FC<InterviewResultsProps> = ({
           <p className="text-sm text-gray-500">Technical Screening Results</p>
         </div>
       </div>
+
+      {/* AI Detection Alert */}
+      {hasAiDetection && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+          <div className="flex items-center gap-2 mb-2">
+            <Shield className="w-5 h-5 text-red-600" />
+            <h4 className="font-semibold text-red-800">Integrity Violation Detected</h4>
+          </div>
+          <p className="text-sm text-red-700">
+            AI-generated responses detected in {aiDetectedCount} question(s). This violates assessment integrity guidelines.
+          </p>
+        </div>
+      )}
 
       {/* Overall Results */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -93,14 +116,56 @@ export const InterviewResults: React.FC<InterviewResultsProps> = ({
         </div>
       </div>
 
+      {/* Detailed Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl p-4 border border-cyan-100">
+          <div className="flex items-center gap-2 mb-2">
+            <Brain className="w-5 h-5 text-cyan-600" />
+            <h4 className="font-semibold text-gray-800 text-sm">Technical Accuracy</h4>
+          </div>
+          <p className="text-xl font-bold text-cyan-600">{avgTechnicalAccuracy.toFixed(1)}/25</p>
+        </div>
+
+        <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl p-4 border border-emerald-100">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-5 h-5 text-emerald-600" />
+            <h4 className="font-semibold text-gray-800 text-sm">Problem Solving</h4>
+          </div>
+          <p className="text-xl font-bold text-emerald-600">{avgProblemSolving.toFixed(1)}/25</p>
+        </div>
+
+        <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-4 border border-orange-100">
+          <div className="flex items-center gap-2 mb-2">
+            <MessageSquare className="w-5 h-5 text-orange-600" />
+            <h4 className="font-semibold text-gray-800 text-sm">Communication</h4>
+          </div>
+          <p className="text-xl font-bold text-orange-600">{avgCommunication.toFixed(1)}/25</p>
+        </div>
+
+        <div className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl p-4 border border-violet-100">
+          <div className="flex items-center gap-2 mb-2">
+            <ClipboardCheck className="w-5 h-5 text-violet-600" />
+            <h4 className="font-semibold text-gray-800 text-sm">Documentation</h4>
+          </div>
+          <p className="text-xl font-bold text-violet-600">{avgDocumentation.toFixed(1)}/25</p>
+        </div>
+      </div>
+
       {/* Question Breakdown */}
       <div className="space-y-3">
         <h4 className="font-semibold text-gray-800 mb-3">Question Breakdown:</h4>
         {answers.map((answer, index) => (
-          <div key={answer.questionId} className="border border-gray-200 rounded-lg p-4">
+          <div key={answer.questionId} className={`border rounded-lg p-4 ${
+            answer.aiDetected ? 'border-red-200 bg-red-50' : 'border-gray-200'
+          }`}>
             <div className="flex justify-between items-start mb-2">
               <span className="text-sm font-medium text-gray-600">Question {answer.questionId}</span>
               <div className="flex items-center gap-2">
+                {answer.aiDetected && (
+                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                    AI Detected
+                  </span>
+                )}
                 <span className="text-sm font-bold text-blue-600">{answer.score}/100</span>
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                   answer.level === 'Level 3' 
@@ -113,6 +178,24 @@ export const InterviewResults: React.FC<InterviewResultsProps> = ({
                 </span>
               </div>
             </div>
+            
+            {!answer.aiDetected && (
+              <div className="grid grid-cols-4 gap-2 mb-2 text-xs">
+                <div className="text-center">
+                  <span className="text-cyan-600 font-medium">Tech: {answer.technicalAccuracy}</span>
+                </div>
+                <div className="text-center">
+                  <span className="text-emerald-600 font-medium">Prob: {answer.problemSolving}</span>
+                </div>
+                <div className="text-center">
+                  <span className="text-orange-600 font-medium">Comm: {answer.communication}</span>
+                </div>
+                <div className="text-center">
+                  <span className="text-violet-600 font-medium">Doc: {answer.documentation}</span>
+                </div>
+              </div>
+            )}
+            
             <p className="text-sm text-gray-600 mb-2">{answer.feedback}</p>
           </div>
         ))}
@@ -122,25 +205,32 @@ export const InterviewResults: React.FC<InterviewResultsProps> = ({
       <div className="mt-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100">
         <h4 className="font-semibold text-gray-800 mb-2">Assessment Summary & Next Steps:</h4>
         <ul className="text-sm text-gray-600 space-y-1">
-          {overallLevel === 'Level 3' && isSuitableForSeniorRole ? (
+          {hasAiDetection ? (
+            <>
+              <li>• Assessment integrity compromised due to AI-generated responses</li>
+              <li>• Candidate is disqualified from this assessment round</li>
+              <li>• Recommend retaking assessment under proper supervision</li>
+              <li>• Consider implementing additional verification measures</li>
+            </>
+          ) : overallLevel === 'Level 3' && isSuitableForSeniorRole ? (
             <>
               <li>• Candidate demonstrates exceptional technical competencies (Score: {averageScore}/100)</li>
               <li>• Highly suitable for senior technical roles and mentoring positions</li>
-              <li>• {levelCounts['Level 3']} questions at Level 3, {levelCounts['Level 2']} at Level 2, {levelCounts['Level 1']} at Level 1</li>
+              <li>• Strong performance across all evaluation metrics</li>
               <li>• Consider for specialized project leadership opportunities</li>
             </>
           ) : overallLevel === 'Level 2' && isSuitableForStandardRole ? (
             <>
               <li>• Candidate shows solid technical foundation (Score: {averageScore}/100)</li>
               <li>• Suitable for standard MSP technician roles with appropriate support</li>
-              <li>• {levelCounts['Level 3']} questions at Level 3, {levelCounts['Level 2']} at Level 2, {levelCounts['Level 1']} at Level 1</li>
+              <li>• Areas for improvement identified in evaluation metrics</li>
               <li>• Continue professional development to reach senior level</li>
             </>
           ) : (
             <>
               <li>• Candidate needs significant improvement (Score: {averageScore}/100)</li>
               <li>• Not suitable for MSP technician roles at this time</li>
-              <li>• {levelCounts['Level 3']} questions at Level 3, {levelCounts['Level 2']} at Level 2, {levelCounts['Level 1']} at Level 1</li>
+              <li>• Significant gaps identified across multiple evaluation areas</li>
               <li>• Recommend comprehensive training and skill development before reapplying</li>
             </>
           )}

@@ -12,6 +12,11 @@ export interface QuestionAnswer {
   score: number;
   level: 'Level 1' | 'Level 2' | 'Level 3';
   feedback: string;
+  technicalAccuracy: number;
+  problemSolving: number;
+  communication: number;
+  documentation: number;
+  aiDetected: boolean;
 }
 
 export interface InterviewState {
