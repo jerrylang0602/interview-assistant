@@ -2,7 +2,7 @@
 import { QuestionAnswer } from '../types/interview';
 
 interface InterviewResultPayload {
-  id: string;
+  "candidate_id": string;
   "Overall Score": string;
   "Overall Level": string;
   "Technical Accuracy": string;
@@ -17,7 +17,7 @@ export const sendInterviewResults = async (
   averageScore: number,
   overallLevel: 'Level 1' | 'Level 2' | 'Level 3'
 ): Promise<void> => {
-  const webhookUrl = 'https://flow.zoho.com/881059997/flow/webhook/incoming?zapikey=1001.d05613f40e8286ac4314821393246f81.bd7c5cabd1405d63d22b91933c934de4&isdebug=false';
+  const webhookUrl = 'https://send-data-scripting.vercel.app/forward';
 
   // Calculate average metrics
   const avgTechnicalAccuracy = answers.reduce((sum, a) => sum + a.technicalAccuracy, 0) / answers.length;
@@ -26,7 +26,7 @@ export const sendInterviewResults = async (
   const avgDocumentation = answers.reduce((sum, a) => sum + a.documentation, 0) / answers.length;
 
   const payload: InterviewResultPayload = {
-    id: candidateId,
+    "candidate_id": candidateId,
     "Overall Score": averageScore.toString(),
     "Overall Level": overallLevel,
     "Technical Accuracy": avgTechnicalAccuracy.toFixed(1),
