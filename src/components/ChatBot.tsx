@@ -3,6 +3,8 @@ import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
 import { InterviewResults } from './InterviewResults';
 import { evaluateAnswer, calculateOverallResults } from '../lib/interview';
+import { getCandidateIdFromUrl } from '../lib/urlUtils';
+import { sendInterviewResults } from '../lib/webhookService';
 import { Message } from '../types/chat';
 import { InterviewState, INTERVIEW_QUESTIONS, QuestionAnswer } from '../types/interview';
 import { Bot, ClipboardList, Trophy, Target, Users, TrendingUp } from 'lucide-react';
@@ -43,6 +45,7 @@ Ready to begin?
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [candidateId, setCandidateId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -52,6 +55,13 @@ Ready to begin?
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Extract candidate ID from URL on component mount
+  useEffect(() => {
+    const id = getCandidateIdFromUrl();
+    setCandidateId(id);
+    console.log('Candidate ID extracted from URL:', id);
+  }, []);
 
   const handleSendMessage = async (content: string) => {
     const userMessage: Message = {
@@ -97,6 +107,19 @@ Ready to begin?
         responseContent = `🎉 **Interview Complete!** 
 
 You have answered all 10 questions. Please see your detailed results below.`;
+        
+        // Send results to Zoho Flow webhook if candidate ID is available
+        if (candidateId) {
+          try {
+            await sendInterviewResults(candidateId, updatedAnswers, averageScore, overallLevel);
+            console.log('Interview results successfully sent to Zoho Flow');
+          } catch (error) {
+            console.error('Failed to send results to Zoho Flow:', error);
+            // Continue with the interview completion even if webhook fails
+          }
+        } else {
+          console.warn('No candidate ID found in URL, skipping webhook submission');
+        }
         
         setInterviewState({
           currentQuestionIndex: nextQuestionIndex,
@@ -157,6 +180,9 @@ You have answered all 10 questions. Please see your detailed results below.`;
                 AI Interview
               </h1>
               <p className="text-sm text-slate-500 font-medium">MSP Technician Assessment</p>
+              {candidateId && (
+                <p className="text-xs text-slate-400">ID: {candidateId}</p>
+              )}
             </div>
           </div>
           
