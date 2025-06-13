@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
@@ -5,6 +6,7 @@ import { InterviewResults } from './InterviewResults';
 import { evaluateAnswer, calculateOverallResults } from '../lib/interview';
 import { getCandidateIdFromUrl } from '../lib/urlUtils';
 import { sendInterviewResults } from '../lib/webhookService';
+import { saveInterviewResults } from '../lib/supabaseService';
 import { Message } from '../types/chat';
 import { InterviewState, INTERVIEW_QUESTIONS, QuestionAnswer } from '../types/interview';
 import { Bot, ClipboardList, Trophy, Target, Users, TrendingUp } from 'lucide-react';
@@ -79,7 +81,7 @@ Ready to begin?
       if (interviewState.isComplete) {
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
-          content: "Thank you! The interview has been completed. Please review your results above.",
+          content: "Thank you! The interview has been completed. We appreciate your time and interest in our position.",
           role: 'assistant',
           timestamp: new Date(),
         };
@@ -106,19 +108,24 @@ Ready to begin?
         const { averageScore, overallLevel } = calculateOverallResults(updatedAnswers);
         responseContent = `🎉 **Interview Complete!** 
 
-You have answered all 10 questions. Please see your detailed results below.`;
+Thank you for completing our AI-powered pre-screening interview. Your responses will be carefully evaluated, and we will follow up with you regarding the next steps in our hiring process. We appreciate your interest in joining our team!`;
         
-        // Send results to Zoho Flow webhook if candidate ID is available
+        // Save results to both Zoho Flow webhook and Supabase if candidate ID is available
         if (candidateId) {
           try {
+            // Save to Supabase database
+            await saveInterviewResults(candidateId, updatedAnswers, averageScore, overallLevel);
+            console.log('Interview results successfully saved to Supabase');
+            
+            // Send to Zoho Flow webhook
             await sendInterviewResults(candidateId, updatedAnswers, averageScore, overallLevel);
             console.log('Interview results successfully sent to Zoho Flow');
           } catch (error) {
-            console.error('Failed to send results to Zoho Flow:', error);
-            // Continue with the interview completion even if webhook fails
+            console.error('Failed to save/send results:', error);
+            // Continue with the interview completion even if saving fails
           }
         } else {
-          console.warn('No candidate ID found in URL, skipping webhook submission');
+          console.warn('No candidate ID found in URL, skipping data persistence');
         }
         
         setInterviewState({
@@ -324,19 +331,6 @@ You have answered all 10 questions. Please see your detailed results below.`;
             <MessageList messages={messages} isLoading={isLoading} />
             <div ref={messagesEndRef} />
           </div>
-          
-          {/* Results Section - Separate scrollable area when complete */}
-          {interviewState.isComplete && (
-            <div className="border-t border-slate-200/50 bg-slate-50/50 max-h-96 overflow-y-auto">
-              <div className="p-6">
-                <InterviewResults 
-                  answers={interviewState.answers}
-                  averageScore={interviewState.averageScore}
-                  overallLevel={interviewState.overallLevel}
-                />
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Enhanced Input Area */}
@@ -344,7 +338,7 @@ You have answered all 10 questions. Please see your detailed results below.`;
           <MessageInput 
             onSendMessage={handleSendMessage} 
             disabled={isLoading}
-            placeholder={interviewState.isComplete ? "Assessment completed - review results above" : "Share your detailed response..."}
+            placeholder={interviewState.isComplete ? "Interview completed - thank you for your time" : "Share your detailed response..."}
           />
         </div>
       </div>
