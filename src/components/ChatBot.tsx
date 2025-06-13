@@ -1,43 +1,21 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
 import { InterviewResults } from './InterviewResults';
 import { evaluateAnswer, calculateOverallResults } from '../lib/interview';
-import { getCandidateIdFromUrl } from '../lib/urlUtils';
+import { getZohoIdFromUrl } from '../lib/urlUtils';
 import { sendInterviewResults } from '../lib/webhookService';
 import { saveInterviewResults } from '../lib/supabaseService';
 import { Message } from '../types/chat';
-import { InterviewState, INTERVIEW_QUESTIONS, QuestionAnswer } from '../types/interview';
+import { InterviewState, QuestionAnswer } from '../types/interview';
+import { useInterviewQuestions } from '../hooks/useInterviewQuestions';
 import { Bot, ClipboardList, Trophy, Target, Users, TrendingUp } from 'lucide-react';
 
 export const ChatBot = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      content: `Welcome to Scaled Inc's Interactive AI Screening Interview for Level 1, Level 2, and Level 3 MSP Technicians!
+  const { questions, loading: questionsLoading, error: questionsError, getQuestionCounts } = useInterviewQuestions();
+  const questionCounts = getQuestionCounts();
 
-This structured interview will evaluate your technical proficiency, problem-solving skills, and professional experience. Please answer each question thoughtfully and clearly.
-
-I'll ask you 10 questions covering:
-• Technical Competencies (6 questions)
-• Scenario-based Problem Solving (2 questions) 
-• Behavioral & Soft Skills (2 questions)
-
-Each answer will be evaluated and scored:
-• Score 80-100: Level 3 (Advanced expertise)
-• Score 40-79: Level 2 (Solid foundation) 
-• Score 0-39: Level 1 (Basic understanding)
-
-Ready to begin?
-
-**Question 1:** ${INTERVIEW_QUESTIONS[0].question}`,
-      role: 'assistant',
-      timestamp: new Date(),
-      questionId: 1
-    },
-  ]);
-
+  const [messages, setMessages] = useState<Message[]>([]);
   const [interviewState, setInterviewState] = useState<InterviewState>({
     currentQuestionIndex: 0,
     answers: [],
@@ -47,7 +25,7 @@ Ready to begin?
   });
 
   const [isLoading, setIsLoading] = useState(false);
-  const [candidateId, setCandidateId] = useState<string | null>(null);
+  const [zohoId, setZohoId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -58,12 +36,82 @@ Ready to begin?
     scrollToBottom();
   }, [messages]);
 
-  // Extract candidate ID from URL on component mount
+  // Extract zoho_id from URL on component mount
   useEffect(() => {
-    const id = getCandidateIdFromUrl();
-    setCandidateId(id);
-    console.log('Candidate ID extracted from URL:', id);
+    const id = getZohoIdFromUrl();
+    setZohoId(id);
+    console.log('Zoho ID extracted from URL:', id);
   }, []);
+
+  // Initialize welcome message when questions are loaded
+  useEffect(() => {
+    if (!questionsLoading && questions.length > 0 && messages.length === 0) {
+      const welcomeMessage: Message = {
+        id: '1',
+        content: `Welcome to Scaled Inc's Interactive AI Screening Interview for Level 1, Level 2, and Level 3 MSP Technicians!
+
+This structured interview will evaluate your technical proficiency, problem-solving skills, and professional experience. Please answer each question thoughtfully and clearly.
+
+I'll ask you ${questionCounts.total} questions covering:
+• Technical Competencies (${questionCounts.technical} questions)
+• Scenario-based Problem Solving (${questionCounts.scenarioBased} questions) 
+• Behavioral & Soft Skills (${questionCounts.behavioral} questions)
+
+Each answer will be evaluated and scored:
+• Score 80-100: Level 3 (Advanced expertise)
+• Score 40-79: Level 2 (Solid foundation) 
+• Score 0-39: Level 1 (Basic understanding)
+
+Ready to begin?
+
+**Question 1:** ${questions[0].question}`,
+        role: 'assistant',
+        timestamp: new Date(),
+        questionId: 1
+      };
+      setMessages([welcomeMessage]);
+    }
+  }, [questionsLoading, questions, messages.length, questionCounts]);
+
+  // Show loading state while fetching questions
+  if (questionsLoading) {
+    return (
+      <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <ClipboardList className="w-6 h-6 text-white animate-pulse" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-800 mb-2">Loading Interview Questions...</h2>
+            <p className="text-slate-600">Please wait while we prepare your assessment.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if questions failed to load
+  if (questionsError) {
+    return (
+      <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-12 h-12 bg-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <ClipboardList className="w-6 h-6 text-white" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-800 mb-2">Error Loading Questions</h2>
+            <p className="text-slate-600">{questionsError}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleSendMessage = async (content: string) => {
     const userMessage: Message = {
@@ -91,18 +139,18 @@ Ready to begin?
       }
 
       // Evaluate the current answer
-      const currentQuestion = INTERVIEW_QUESTIONS[interviewState.currentQuestionIndex];
+      const currentQuestion = questions[interviewState.currentQuestionIndex];
       const evaluation = await evaluateAnswer(currentQuestion.id, content);
       
       // Update interview state with the new answer
       const updatedAnswers = [...interviewState.answers, evaluation];
       const nextQuestionIndex = interviewState.currentQuestionIndex + 1;
-      const isComplete = nextQuestionIndex >= INTERVIEW_QUESTIONS.length;
+      const isComplete = nextQuestionIndex >= questions.length;
 
       let responseContent = '';
 
       if (!isComplete) {
-        const nextQuestion = INTERVIEW_QUESTIONS[nextQuestionIndex];
+        const nextQuestion = questions[nextQuestionIndex];
         responseContent = `**Question ${nextQuestion.id}:** ${nextQuestion.question}`;
       } else {
         const { averageScore, overallLevel } = calculateOverallResults(updatedAnswers);
@@ -110,22 +158,22 @@ Ready to begin?
 
 Thank you for completing our AI-powered pre-screening interview. Your responses will be carefully evaluated, and we will follow up with you regarding the next steps in our hiring process. We appreciate your interest in joining our team!`;
         
-        // Save results to both Zoho Flow webhook and Supabase if candidate ID is available
-        if (candidateId) {
+        // Save results to both Zoho Flow webhook and Supabase if zoho_id is available
+        if (zohoId) {
           try {
             // Save to Supabase database
-            await saveInterviewResults(candidateId, updatedAnswers, averageScore, overallLevel);
+            await saveInterviewResults(zohoId, updatedAnswers, averageScore, overallLevel);
             console.log('Interview results successfully saved to Supabase');
             
             // Send to Zoho Flow webhook
-            await sendInterviewResults(candidateId, updatedAnswers, averageScore, overallLevel);
+            await sendInterviewResults(zohoId, updatedAnswers, averageScore, overallLevel);
             console.log('Interview results successfully sent to Zoho Flow');
           } catch (error) {
             console.error('Failed to save/send results:', error);
             // Continue with the interview completion even if saving fails
           }
         } else {
-          console.warn('No candidate ID found in URL, skipping data persistence');
+          console.warn('No zoho_id found in URL, skipping data persistence');
         }
         
         setInterviewState({
@@ -151,7 +199,7 @@ Thank you for completing our AI-powered pre-screening interview. Your responses 
         content: responseContent,
         role: 'assistant',
         timestamp: new Date(),
-        questionId: !isComplete ? INTERVIEW_QUESTIONS[nextQuestionIndex].id : undefined
+        questionId: !isComplete ? questions[nextQuestionIndex].id : undefined
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -187,8 +235,8 @@ Thank you for completing our AI-powered pre-screening interview. Your responses 
                 AI Interview
               </h1>
               <p className="text-sm text-slate-500 font-medium">MSP Technician Assessment</p>
-              {candidateId && (
-                <p className="text-xs text-slate-400">ID: {candidateId}</p>
+              {zohoId && (
+                <p className="text-xs text-slate-400">Zoho ID: {zohoId}</p>
               )}
             </div>
           </div>
@@ -206,7 +254,7 @@ Thank you for completing our AI-powered pre-screening interview. Your responses 
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-slate-600">Questions</span>
                 <span className="text-sm font-bold text-slate-800">
-                  {Math.min(interviewState.currentQuestionIndex + 1, INTERVIEW_QUESTIONS.length)}/10
+                  {Math.min(interviewState.currentQuestionIndex + 1, questions.length)}/{questions.length}
                 </span>
               </div>
               
@@ -214,7 +262,7 @@ Thank you for completing our AI-powered pre-screening interview. Your responses 
                 <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
                   <div 
                     className="bg-gradient-to-r from-blue-500 to-indigo-500 h-3 rounded-full transition-all duration-700 ease-out shadow-sm" 
-                    style={{ width: `${(Math.min(interviewState.currentQuestionIndex + 1, INTERVIEW_QUESTIONS.length) / INTERVIEW_QUESTIONS.length) * 100}%` }}
+                    style={{ width: `${(Math.min(interviewState.currentQuestionIndex + 1, questions.length) / questions.length) * 100}%` }}
                   ></div>
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
@@ -306,7 +354,7 @@ Thank you for completing our AI-powered pre-screening interview. Your responses 
                     ) : (
                       <span className="flex items-center gap-2">
                         <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                        Question {interviewState.currentQuestionIndex + 1} of {INTERVIEW_QUESTIONS.length}
+                        Question {interviewState.currentQuestionIndex + 1} of {questions.length}
                       </span>
                     )}
                   </p>
@@ -337,7 +385,7 @@ Thank you for completing our AI-powered pre-screening interview. Your responses 
         <div className="border-t border-slate-200/50 bg-white/95 backdrop-blur-xl shadow-lg">
           <MessageInput 
             onSendMessage={handleSendMessage} 
-            disabled={isLoading}
+            disabled={isLoading || questions.length === 0}
             placeholder={interviewState.isComplete ? "Interview completed - thank you for your time" : "Share your detailed response..."}
           />
         </div>

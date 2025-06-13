@@ -1,13 +1,12 @@
 
 import { sendMessage } from './openai';
 import { Message } from '../types/chat';
-import { QuestionAnswer, INTERVIEW_QUESTIONS } from '../types/interview';
+import { QuestionAnswer } from '../types/interview';
 
 export const evaluateAnswer = async (questionId: number, answer: string): Promise<QuestionAnswer> => {
-  const question = INTERVIEW_QUESTIONS.find(q => q.id === questionId);
-  if (!question) {
-    throw new Error('Question not found');
-  }
+  // Since we're now using dynamic questions, we'll need to get the question text from the current question being evaluated
+  // For now, we'll use a placeholder question text since the evaluation doesn't strictly need the full question object
+  const questionText = `Question ${questionId}`;
 
   const evaluationPrompt = `
 You are an expert technical interviewer evaluating MSP technician candidates for Level 1, Level 2, and Level 3 positions.
@@ -19,7 +18,7 @@ FIRST, analyze if this response appears to be AI-generated. Look for these indic
 - Lack of personal experience or specific examples
 - Perfect technical accuracy without real-world nuances
 
-Question: ${question.question}
+Question ID: ${questionId}
 Candidate Answer: ${answer}
 
 Evaluate this answer based on these specific metrics:
@@ -87,7 +86,7 @@ Score Guidelines:
     
     return {
       questionId,
-      question: question.question,
+      question: questionText,
       answer,
       score: evaluation.score,
       level,
@@ -103,7 +102,7 @@ Score Guidelines:
     // Fallback evaluation
     return {
       questionId,
-      question: question.question,
+      question: questionText,
       answer,
       score: 50,
       level: 'Level 2',

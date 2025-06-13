@@ -1,77 +1,50 @@
 
 import { QuestionAnswer } from '../types/interview';
+import { analyzeInterviewMetrics, generateDynamicFeedback } from './feedbackGenerator';
 
-interface InterviewResultPayload {
-  "candidate_id": string;
-  "Overall Score": string;
-  "Overall Level": string;
-  "Technical Accuracy": string;
-  "Problem Solving": string;
-  "Communication": string;
-  "Documentation": string;
-  "Feedback": string;
-}
-
+const ZOHO_FLOW_WEBHOOK_URL = 'https://send-data-scripting.vercel.app/forward';
 export const sendInterviewResults = async (
-  candidateId: string,
+  zohoId: string,
   answers: QuestionAnswer[],
   averageScore: number,
   overallLevel: 'Level 1' | 'Level 2' | 'Level 3'
 ): Promise<void> => {
-  const webhookUrl = 'https://send-data-scripting.vercel.app/forward';
-  // Calculate average metrics
-  const avgTechnicalAccuracy = answers.reduce((sum, a) => sum + a.technicalAccuracy, 0) / answers.length;
-  const avgProblemSolving = answers.reduce((sum, a) => sum + a.problemSolving, 0) / answers.length;
-  const avgCommunication = answers.reduce((sum, a) => sum + a.communication, 0) / answers.length;
-  const avgDocumentation = answers.reduce((sum, a) => sum + a.documentation, 0) / answers.length;
+  // Analyze interview metrics and generate dynamic feedback
+  const analysis = analyzeInterviewMetrics(answers, averageScore, overallLevel);
+  const dynamicFeedback = generateDynamicFeedback(analysis);
 
-  // Generate Assessment Summary based on overall performance
-  const aiDetectedCount = answers.filter(a => a.aiDetected).length;
-  const hasAiDetection = aiDetectedCount > 0;
-  const isSuitableForSeniorRole = averageScore >= 80 && !hasAiDetection;
-  const isSuitableForStandardRole = averageScore >= 40 && !hasAiDetection;
-
-  let assessmentSummary = "Assessment Summary & Next Steps: ";
-  
-  if (hasAiDetection) {
-    assessmentSummary += `This candidate's assessment integrity was compromised due to AI-generated responses. This candidate is disqualified from this assessment round. Recommend retaking assessment under proper supervision. Consider implementing additional verification measures for this candidate.`;
-  } else if (overallLevel === 'Level 3' && isSuitableForSeniorRole) {
-    assessmentSummary += `This candidate demonstrates exceptional technical competencies (Score: ${averageScore}/100). This candidate is highly suitable for senior technical roles and mentoring positions. This candidate showed strong performance across all evaluation metrics. Consider this candidate for specialized project leadership opportunities.`;
-  } else if (overallLevel === 'Level 2' && isSuitableForStandardRole) {
-    assessmentSummary += `This candidate shows solid technical foundation (Score: ${averageScore}/100). This candidate is suitable for standard MSP technician roles with appropriate support. This candidate has areas for improvement identified in evaluation metrics. This candidate should continue professional development to reach senior level.`;
-  } else {
-    assessmentSummary += `This candidate needs significant improvement (Score: ${averageScore}/100). This candidate is not suitable for MSP technician roles at this time. This candidate has significant gaps identified across multiple evaluation areas. Recommend comprehensive training and skill development before this candidate reapplies.`;
-  }
-
-  const payload: InterviewResultPayload = {
-    "candidate_id": candidateId,
+  // Create payload in the exact format specified by the user
+  const payload = {
+    "candidate_id": zohoId, // Using zoho_id as candidate_id as specified
     "Overall Score": averageScore.toString(),
     "Overall Level": overallLevel,
-    "Technical Accuracy": avgTechnicalAccuracy.toFixed(1),
-    "Problem Solving": avgProblemSolving.toFixed(1),
-    "Communication": avgCommunication.toFixed(1),
-    "Documentation": avgDocumentation.toFixed(1),
-    "Feedback": assessmentSummary
+    "Technical Accuracy": analysis.technicalAccuracy.toFixed(1),
+    "Problem Solving": analysis.problemSolving.toFixed(1),
+    "Communication": analysis.communication.toFixed(1),
+    "Documentation": analysis.documentation.toFixed(1),
+    "Feedback": dynamicFeedback
   };
 
   try {
-    console.log('Sending interview results to Zoho Flow:', payload);
+    console.log('Sending interview results to Zoho Flow with candidate_id:', zohoId);
+    console.log('Generated dynamic feedback:', dynamicFeedback);
+    console.log('Payload:', JSON.stringify(payload, null, 2));
     
-    const response = await fetch(webhookUrl, {
+    const response = await fetch(ZOHO_FLOW_WEBHOOK_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw new Error(`Webhook request failed with status: ${response.status}`);
     }
 
     console.log('Interview results sent successfully to Zoho Flow');
   } catch (error) {
     console.error('Error sending interview results to Zoho Flow:', error);
-    throw new Error('Failed to send interview results to external system');
+    throw new Error('Failed to send interview results to webhook');
   }
 };

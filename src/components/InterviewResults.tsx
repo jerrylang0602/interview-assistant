@@ -2,6 +2,7 @@
 import React from 'react';
 import { QuestionAnswer } from '../types/interview';
 import { CheckCircle, Award, FileText, AlertTriangle, Shield, Brain, MessageSquare, ClipboardCheck } from 'lucide-react';
+import { analyzeInterviewMetrics, generateDynamicFeedback } from '../lib/feedbackGenerator';
 
 interface InterviewResultsProps {
   answers: QuestionAnswer[];
@@ -14,26 +15,16 @@ export const InterviewResults: React.FC<InterviewResultsProps> = ({
   averageScore,
   overallLevel
 }) => {
+  // Generate dynamic analysis and feedback
+  const analysis = analyzeInterviewMetrics(answers, averageScore, overallLevel);
+  const dynamicFeedback = generateDynamicFeedback(analysis);
+
   // Count questions by level
   const levelCounts = {
     'Level 1': answers.filter(a => a.level === 'Level 1').length,
     'Level 2': answers.filter(a => a.level === 'Level 2').length,
     'Level 3': answers.filter(a => a.level === 'Level 3').length
   };
-
-  // Calculate average metrics
-  const avgTechnicalAccuracy = answers.reduce((sum, a) => sum + a.technicalAccuracy, 0) / answers.length;
-  const avgProblemSolving = answers.reduce((sum, a) => sum + a.problemSolving, 0) / answers.length;
-  const avgCommunication = answers.reduce((sum, a) => sum + a.communication, 0) / answers.length;
-  const avgDocumentation = answers.reduce((sum, a) => sum + a.documentation, 0) / answers.length;
-
-  // Check for AI detection
-  const aiDetectedCount = answers.filter(a => a.aiDetected).length;
-  const hasAiDetection = aiDetectedCount > 0;
-
-  // Determine suitability based on average score and level distribution
-  const isSuitableForSeniorRole = averageScore >= 80 && !hasAiDetection;
-  const isSuitableForStandardRole = averageScore >= 40 && !hasAiDetection;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
@@ -48,14 +39,14 @@ export const InterviewResults: React.FC<InterviewResultsProps> = ({
       </div>
 
       {/* AI Detection Alert */}
-      {hasAiDetection && (
+      {analysis.aiDetected && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
           <div className="flex items-center gap-2 mb-2">
             <Shield className="w-5 h-5 text-red-600" />
             <h4 className="font-semibold text-red-800">Integrity Violation Detected</h4>
           </div>
           <p className="text-sm text-red-700">
-            AI-generated responses detected in {aiDetectedCount} question(s). This violates assessment integrity guidelines.
+            AI-generated responses detected in {analysis.aiDetectedCount} question(s). This violates assessment integrity guidelines.
           </p>
         </div>
       )}
@@ -123,7 +114,7 @@ export const InterviewResults: React.FC<InterviewResultsProps> = ({
             <Brain className="w-5 h-5 text-cyan-600" />
             <h4 className="font-semibold text-gray-800 text-sm">Technical Accuracy</h4>
           </div>
-          <p className="text-xl font-bold text-cyan-600">{avgTechnicalAccuracy.toFixed(1)}/25</p>
+          <p className="text-xl font-bold text-cyan-600">{analysis.technicalAccuracy}/25</p>
         </div>
 
         <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl p-4 border border-emerald-100">
@@ -131,7 +122,7 @@ export const InterviewResults: React.FC<InterviewResultsProps> = ({
             <AlertTriangle className="w-5 h-5 text-emerald-600" />
             <h4 className="font-semibold text-gray-800 text-sm">Problem Solving</h4>
           </div>
-          <p className="text-xl font-bold text-emerald-600">{avgProblemSolving.toFixed(1)}/25</p>
+          <p className="text-xl font-bold text-emerald-600">{analysis.problemSolving}/25</p>
         </div>
 
         <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-4 border border-orange-100">
@@ -139,7 +130,7 @@ export const InterviewResults: React.FC<InterviewResultsProps> = ({
             <MessageSquare className="w-5 h-5 text-orange-600" />
             <h4 className="font-semibold text-gray-800 text-sm">Communication</h4>
           </div>
-          <p className="text-xl font-bold text-orange-600">{avgCommunication.toFixed(1)}/25</p>
+          <p className="text-xl font-bold text-orange-600">{analysis.communication}/25</p>
         </div>
 
         <div className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl p-4 border border-violet-100">
@@ -147,12 +138,39 @@ export const InterviewResults: React.FC<InterviewResultsProps> = ({
             <ClipboardCheck className="w-5 h-5 text-violet-600" />
             <h4 className="font-semibold text-gray-800 text-sm">Documentation</h4>
           </div>
-          <p className="text-xl font-bold text-violet-600">{avgDocumentation.toFixed(1)}/25</p>
+          <p className="text-xl font-bold text-violet-600">{analysis.documentation}/25</p>
         </div>
       </div>
 
+      {/* Strengths and Weaknesses */}
+      {(analysis.strengths.length > 0 || analysis.weaknesses.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          {analysis.strengths.length > 0 && (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+              <h4 className="font-semibold text-green-800 mb-2">Key Strengths</h4>
+              <ul className="text-sm text-green-700 space-y-1">
+                {analysis.strengths.map((strength, index) => (
+                  <li key={index}>• {strength}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          {analysis.weaknesses.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <h4 className="font-semibold text-amber-800 mb-2">Areas for Improvement</h4>
+              <ul className="text-sm text-amber-700 space-y-1">
+                {analysis.weaknesses.map((weakness, index) => (
+                  <li key={index}>• {weakness}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Question Breakdown */}
-      <div className="space-y-3">
+      <div className="space-y-3 mb-6">
         <h4 className="font-semibold text-gray-800 mb-3">Question Breakdown:</h4>
         {answers.map((answer, index) => (
           <div key={answer.questionId} className={`border rounded-lg p-4 ${
@@ -201,40 +219,21 @@ export const InterviewResults: React.FC<InterviewResultsProps> = ({
         ))}
       </div>
 
-      {/* Recommendations based on overall performance */}
+      {/* Dynamic Assessment Summary */}
       <div className="mt-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100">
-        <h4 className="font-semibold text-gray-800 mb-2">Assessment Summary & Next Steps:</h4>
-        <ul className="text-sm text-gray-600 space-y-1">
-          {hasAiDetection ? (
-            <>
-              <li>• Assessment integrity compromised due to AI-generated responses</li>
-              <li>• Candidate is disqualified from this assessment round</li>
-              <li>• Recommend retaking assessment under proper supervision</li>
-              <li>• Consider implementing additional verification measures</li>
-            </>
-          ) : overallLevel === 'Level 3' && isSuitableForSeniorRole ? (
-            <>
-              <li>• Candidate demonstrates exceptional technical competencies (Score: {averageScore}/100)</li>
-              <li>• Highly suitable for senior technical roles and mentoring positions</li>
-              <li>• Strong performance across all evaluation metrics</li>
-              <li>• Consider for specialized project leadership opportunities</li>
-            </>
-          ) : overallLevel === 'Level 2' && isSuitableForStandardRole ? (
-            <>
-              <li>• Candidate shows solid technical foundation (Score: {averageScore}/100)</li>
-              <li>• Suitable for standard MSP technician roles with appropriate support</li>
-              <li>• Areas for improvement identified in evaluation metrics</li>
-              <li>• Continue professional development to reach senior level</li>
-            </>
-          ) : (
-            <>
-              <li>• Candidate needs significant improvement (Score: {averageScore}/100)</li>
-              <li>• Not suitable for MSP technician roles at this time</li>
-              <li>• Significant gaps identified across multiple evaluation areas</li>
-              <li>• Recommend comprehensive training and skill development before reapplying</li>
-            </>
-          )}
-        </ul>
+        <h4 className="font-semibold text-gray-800 mb-2">Dynamic Assessment Summary:</h4>
+        <p className="text-sm text-gray-600 leading-relaxed">{dynamicFeedback}</p>
+        
+        {analysis.recommendations.length > 0 && (
+          <div className="mt-4">
+            <h5 className="font-medium text-gray-700 mb-2">Key Recommendations:</h5>
+            <ul className="text-sm text-gray-600 space-y-1">
+              {analysis.recommendations.map((recommendation, index) => (
+                <li key={index}>• {recommendation}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );
