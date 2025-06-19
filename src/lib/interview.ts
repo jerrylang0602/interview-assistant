@@ -1,12 +1,15 @@
 
 import { sendMessage } from './openai';
 import { Message } from '../types/chat';
-import { QuestionAnswer } from '../types/interview';
+import { QuestionAnswer, InterviewQuestion } from '../types/interview';
 
-export const evaluateAnswer = async (questionId: number, answer: string): Promise<QuestionAnswer> => {
-  // Since we're now using dynamic questions, we'll need to get the question text from the current question being evaluated
-  // For now, we'll use a placeholder question text since the evaluation doesn't strictly need the full question object
-  const questionText = `Question ${questionId}`;
+export const evaluateAnswer = async (
+  questionId: number, 
+  answer: string, 
+  question?: InterviewQuestion
+): Promise<QuestionAnswer> => {
+  // Use the actual question text if provided, otherwise fall back to placeholder
+  const questionText = question?.question || `Question ${questionId}`;
 
   const evaluationPrompt = `
 You are an expert technical interviewer evaluating MSP technician candidates for Level 1, Level 2, and Level 3 positions.
@@ -18,15 +21,15 @@ FIRST, analyze if this response appears to be AI-generated. Look for these indic
 - Lack of personal experience or specific examples
 - Perfect technical accuracy without real-world nuances
 
-Question ID: ${questionId}
+Question: ${questionText}
 Candidate Answer: ${answer}
 
-Evaluate this answer based on these specific metrics:
+Evaluate this answer based on these specific metrics using a 1-100 point scale:
 
-1. Technical Accuracy (0-25 points): Clarity, completeness, and technical correctness of the response
-2. Problem-Solving Methodology (0-25 points): Structured and logical approaches to troubleshooting and solutions
-3. Professional Communication (0-25 points): Clarity, effectiveness, and appropriateness of communication
-4. Documentation & Process Orientation (0-25 points): Methodical approaches and quality in maintaining technical documentation
+1. Technical Accuracy (1-25 points): Clarity, completeness, and technical correctness of the response
+2. Problem-Solving Methodology (1-25 points): Structured and logical approaches to troubleshooting and solutions
+3. Professional Communication (1-25 points): Clarity, effectiveness, and appropriateness of communication
+4. Documentation & Process Orientation (1-25 points): Methodical approaches and quality in maintaining technical documentation
 
 IMPORTANT: If the response appears to be AI-generated, automatically assign a score of 0 and flag as "AI_DETECTED".
 
@@ -44,8 +47,8 @@ Provide your response in this exact JSON format:
 Score Guidelines:
 - 80-100: Advanced expertise, comprehensive understanding, proactive approaches
 - 40-79: Solid foundational knowledge, standard procedures, some guidance needed
-- 0-39: Basic understanding, significant gaps, requires substantial training
-- 0: AI-generated response detected
+- 1-39: Basic understanding, significant gaps, requires substantial training
+- 0: AI-generated response detected or completely inadequate response
 `;
 
   try {
@@ -86,7 +89,7 @@ Score Guidelines:
     
     return {
       questionId,
-      question: questionText,
+      question: questionText, // Now using the actual question text
       answer,
       score: evaluation.score,
       level,
@@ -99,7 +102,7 @@ Score Guidelines:
     };
   } catch (error) {
     console.error('Error evaluating answer:', error);
-    // Fallback evaluation
+    // Fallback evaluation with proper scoring range
     return {
       questionId,
       question: questionText,

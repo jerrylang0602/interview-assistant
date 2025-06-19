@@ -138,9 +138,12 @@ Ready to begin?
         return;
       }
 
-      // Evaluate the current answer
+      // Evaluate the current answer with the actual question
       const currentQuestion = questions[interviewState.currentQuestionIndex];
-      const evaluation = await evaluateAnswer(currentQuestion.id, content);
+      console.log('Evaluating answer for question:', currentQuestion);
+      
+      const evaluation = await evaluateAnswer(currentQuestion.id, content, currentQuestion);
+      console.log('Evaluation result:', evaluation);
       
       // Update interview state with the new answer
       const updatedAnswers = [...interviewState.answers, evaluation];
@@ -281,32 +284,34 @@ Thank you for completing our AI-powered pre-screening interview. Your responses 
             </div>
           </div>
           
-          {/* Assessment Sections */}
+          {/* Chat Instructions */}
           <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-6 border border-emerald-100/50 shadow-sm mb-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
                 <Target className="w-4 h-4 text-white" />
               </div>
-              <h3 className="font-bold text-slate-800">Scoring System</h3>
+              <h3 className="font-bold text-slate-800">How to Use</h3>
             </div>
             
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-white/60 border border-emerald-200/30">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-sm font-medium text-slate-700">Level 3</span>
-                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full ml-auto">80-100</span>
+            <div className="space-y-3 text-sm text-slate-600">
+              <div className="flex items-start gap-3">
+                <div className="w-2 h-2 bg-emerald-500 rounded-full mt-2 flex-shrink-0"></div>
+                <span>Press <kbd className="px-2 py-1 bg-white rounded border text-xs font-mono">Shift+Enter</kbd> to submit your response</span>
               </div>
               
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-white/60 border border-emerald-200/30">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                <span className="text-sm font-medium text-slate-700">Level 2</span>
-                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full ml-auto">40-79</span>
+              <div className="flex items-start gap-3">
+                <div className="w-2 h-2 bg-emerald-500 rounded-full mt-2 flex-shrink-0"></div>
+                <span>Press <kbd className="px-2 py-1 bg-white rounded border text-xs font-mono">Enter</kbd> for new lines</span>
               </div>
               
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-white/60 border border-emerald-200/30">
-                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                <span className="text-sm font-medium text-slate-700">Level 1</span>
-                <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full ml-auto">0-39</span>
+              <div className="flex items-start gap-3">
+                <div className="w-2 h-2 bg-emerald-500 rounded-full mt-2 flex-shrink-0"></div>
+                <span>Use the <strong>Send</strong> button as an alternative to submit</span>
+              </div>
+              
+              <div className="flex items-start gap-3">
+                <div className="w-2 h-2 bg-emerald-500 rounded-full mt-2 flex-shrink-0"></div>
+                <span>Answer thoughtfully and provide detailed explanations</span>
               </div>
             </div>
           </div>

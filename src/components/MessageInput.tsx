@@ -29,10 +29,11 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
     }
+    // Regular Enter key will now create a new line (default textarea behavior)
   };
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -54,7 +55,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               ref={textareaRef}
               value={message}
               onChange={handleTextareaChange}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyPress}
               placeholder={placeholder}
               disabled={disabled}
               className="w-full px-6 py-4 pr-24 rounded-3xl border-2 border-slate-200 focus:border-blue-300 focus:ring-4 focus:ring-blue-100 resize-none outline-none transition-all duration-200 bg-white shadow-sm text-slate-800 placeholder-slate-400 min-h-[60px] max-h-[120px] disabled:opacity-50 disabled:cursor-not-allowed hover:border-slate-300"
@@ -80,13 +81,13 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             </div>
           </div>
           
-          {/* Character count */}
+          {/* Updated instructions */}
           <div className="flex justify-between items-center mt-2 px-2">
             <span className="text-xs text-slate-400">
               {message.length > 0 && `${message.length} characters`}
             </span>
             <span className="text-xs text-slate-400">
-              Press Enter to send, Shift+Enter for new line
+              Press Shift+Enter to send, Enter for new line
             </span>
           </div>
         </div>

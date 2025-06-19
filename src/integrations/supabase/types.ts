@@ -369,48 +369,45 @@ export type Database = {
       interview_results: {
         Row: {
           ai_detected: boolean | null
-          answers: Json | null
           communication: number | null
           completed_at: string
+          detailed_result: Json | null
           documentation: number | null
           feedback: string | null
           id: string
           overall_level: string | null
           overall_score: number | null
           problem_solving: number | null
-          questions: Json | null
           status: string | null
           technical_accuracy: number | null
           zoho_id: string | null
         }
         Insert: {
           ai_detected?: boolean | null
-          answers?: Json | null
           communication?: number | null
           completed_at?: string
+          detailed_result?: Json | null
           documentation?: number | null
           feedback?: string | null
           id?: string
           overall_level?: string | null
           overall_score?: number | null
           problem_solving?: number | null
-          questions?: Json | null
           status?: string | null
           technical_accuracy?: number | null
           zoho_id?: string | null
         }
         Update: {
           ai_detected?: boolean | null
-          answers?: Json | null
           communication?: number | null
           completed_at?: string
+          detailed_result?: Json | null
           documentation?: number | null
           feedback?: string | null
           id?: string
           overall_level?: string | null
           overall_score?: number | null
           problem_solving?: number | null
-          questions?: Json | null
           status?: string | null
           technical_accuracy?: number | null
           zoho_id?: string | null

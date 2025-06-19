@@ -61,8 +61,8 @@ const Dashboard = () => {
         feedback: result.feedback || '',
         ai_detected: result.ai_detected || false,
         completed_at: result.completed_at,
-        answers: result.answers || [],
-        questions: result.questions || [],
+        answers: Array.isArray(result.detailed_result) ? result.detailed_result : [], // Use detailed_result as answers for compatibility
+        questions: Array.isArray(result.detailed_result) ? result.detailed_result : [], // Use detailed_result as questions for compatibility
         status: result.status || 'completed'
       })) || [];
 

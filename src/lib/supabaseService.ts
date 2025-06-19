@@ -17,6 +17,7 @@ export interface InterviewResult {
   completed_at: string;
   answers: QuestionAnswer[];
   questions?: QuestionAnswer[]; // For compatibility with the questions field
+  detailed_result?: any; // For the new detailed_results structure
   status?: string;
 }
 
@@ -30,33 +31,48 @@ export const saveInterviewResults = async (
   const analysis = analyzeInterviewMetrics(answers, averageScore, overallLevel);
   const dynamicFeedback = generateDynamicFeedback(analysis);
 
-  // Transform answers to match the expected structure for the questions field
-  const questionsData = answers.map(answer => ({
-    id: answer.questionId.toString(),
-    score: answer.score,
-    answer: answer.answer,
-    question: answer.question,
-    aiDetected: answer.aiDetected
+  // Calculate average scores for each category
+  const avgTechnicalAccuracy = answers.reduce((sum, ans) => sum + (ans.technicalAccuracy || 0), 0) / answers.length;
+  const avgProblemSolving = answers.reduce((sum, ans) => sum + (ans.problemSolving || 0), 0) / answers.length;
+  const avgCommunication = answers.reduce((sum, ans) => sum + (ans.communication || 0), 0) / answers.length;
+  const avgDocumentation = answers.reduce((sum, ans) => sum + (ans.documentation || 0), 0) / answers.length;
+
+  // Check if any AI was detected
+  const hasAiDetection = answers.some(answer => answer.aiDetected);
+
+  // Create detailed_results array with the exact structure you specified
+  const detailedResults = answers.map(answer => ({
+    question: answer.question || "",
+    answer: answer.answer || "",
+    feedback: answer.feedback || "",
+    level: answer.level || "",
+    score: answer.score || 0,
+    technicalAccuracy: answer.technicalAccuracy || 0,
+    problemSolving: answer.problemSolving || 0,
+    documentation: answer.documentation || 0,
+    communication: answer.communication || 0,
+    aiDetected: answer.aiDetected || false
   }));
 
+  // Create the interview result object with your specified structure
   const interviewResult = {
     zoho_id: zohoId,
     overall_score: averageScore,
     overall_level: overallLevel,
-    technical_accuracy: analysis.technicalAccuracy,
-    problem_solving: analysis.problemSolving,
-    communication: analysis.communication,
-    documentation: analysis.documentation,
+    technical_accuracy: Number(avgTechnicalAccuracy.toFixed(1)),
+    problem_solving: Number(avgProblemSolving.toFixed(1)),
+    communication: Number(avgCommunication.toFixed(1)),
+    documentation: Number(avgDocumentation.toFixed(1)),
     feedback: dynamicFeedback,
-    ai_detected: analysis.aiDetected,
+    ai_detected: hasAiDetection,
     completed_at: new Date().toISOString(),
-    answers: answers,
-    questions: questionsData,
+    detailed_result: detailedResults, // Store as detailed_result to match the database column
     status: 'completed'
   };
 
   try {
-    console.log('Saving interview results to Supabase with zoho_id:', zohoId);
+    console.log('Saving detailed interview results to Supabase with zoho_id:', zohoId);
+    console.log('Detailed results structure:', detailedResults);
     console.log('Generated dynamic feedback:', dynamicFeedback);
     
     // Use supabaseAdmin client to bypass RLS
@@ -68,10 +84,10 @@ export const saveInterviewResults = async (
       throw error;
     }
 
-    console.log('Interview results saved successfully to Supabase');
+    console.log('Detailed interview results saved successfully to Supabase');
   } catch (error) {
-    console.error('Error saving interview results to Supabase:', error);
-    throw new Error('Failed to save interview results to database');
+    console.error('Error saving detailed interview results to Supabase:', error);
+    throw new Error('Failed to save detailed interview results to database');
   }
 };
 
